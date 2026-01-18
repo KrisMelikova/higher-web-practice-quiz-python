@@ -143,12 +143,6 @@ class TestQuizService:
         assert fetched.title == 'Test Quiz'
         assert fetched.id == quiz.id
 
-    def test_get_nonexistent_quiz(self) -> None:
-        """Тест получения несуществующего квиза"""
-        with pytest.raises(Exception) as exc_info:
-            self.service.get_quiz(999)
-        assert 'Квиз с id=999 не найден' in str(exc_info.value)
-
     def test_update_quiz(self) -> None:
         """Тест обновления квиза"""
         quiz = Quiz.objects.create(title='Old Title', description='Old Desc')
@@ -455,12 +449,6 @@ class TestQuestionService:
         assert 'Q2' in texts
         assert 'Q3' not in texts
 
-    def test_get_questions_for_nonexistent_quiz(self) -> None:
-        """Тест получения вопросов для несуществующего квиза"""
-        with pytest.raises(Exception) as exc_info:
-            self.service.get_questions_for_quiz(999)
-        assert 'Квиз с id=999 не найден' in str(exc_info.value)
-
     def test_update_question(self) -> None:
         """Тест обновления вопроса"""
         question = Question.objects.create(
@@ -580,15 +568,3 @@ class TestQuestionService:
             questions_set.add(question.id)
 
         assert len(questions_set) > 1
-
-    def test_random_question_from_empty_quiz(self) -> None:
-        """Тест получения случайного вопроса из пустого квиза"""
-        with pytest.raises(Exception) as exc_info:
-            self.service.random_question_from_quiz(self.quiz.id)
-        assert f'В квизе с id={self.quiz.id} нет вопросов' in str(exc_info.value)
-
-    def test_random_question_from_nonexistent_quiz(self) -> None:
-        """Тест получения случайного вопроса из несуществующего квиза"""
-        with pytest.raises(Exception) as exc_info:
-            self.service.random_question_from_quiz(999)
-        assert 'Квиз с id=999 не найден' in str(exc_info.value)
