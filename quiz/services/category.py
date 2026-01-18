@@ -1,10 +1,100 @@
 """Модуль с реализацией сервиса категорий"""
 
+from django.db import transaction, DatabaseError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+
 from quiz.dao import AbstractCategoryService
+from quiz.models import Category
 
 
 class CategoryService(AbstractCategoryService):
-    """Реализация сервиса для категорий"""
+    """Реализация сервиса для работы с категориями"""
 
-    # TODO: нужно реализовать методы интерфейса
+    def list_categories(self) -> list[Category]:
+        """Метод для получения списка категорий"""
 
+        try:
+            return list(Category.objects.all().order_by('id'))
+        except DatabaseError as e:
+            raise Exception(f'Ошибка при получении списка категорий: {e}')
+
+    def get_category(self, category_id: int) -> Category:
+        """
+        Метод для получения категории по идентификатору.
+
+        :param category_id: Идентификатор категории.
+        :return: Категория из БД.
+        """
+
+        try:
+            return Category.objects.get(id=category_id)
+        except ObjectDoesNotExist:
+            raise Exception(f'Категория с id={category_id} не найдена')
+        except DatabaseError as e:
+            raise Exception(f'Ошибка при получении категории: {e}')
+
+    def create_category(self, title: str) -> Category:
+        """
+        Создает категорию вопросов.
+
+        :param title: Название для категории.
+        :return: Созданная категория.
+        """
+
+        if not title or len(title.strip()) == 0:
+            raise ValidationError('Название категории не может быть пустым')
+
+        if len(title) > 100:
+            raise ValidationError('Название категории не может превышать 100 символов')
+
+        try:
+            with transaction.atomic():
+                return Category.objects.create(title=title.strip())
+        except DatabaseError as e:
+            raise Exception(f'Ошибка при создании категории: {e}')
+
+    def update_category(self, category_id: int, data: dict) -> Category:
+        """
+        Обновляет категорию новыми данными.
+
+        :param category_id: Идентификатор категории.
+        :param data: Данные для обновления категории.
+        :return: Обновленная категория.
+        """
+
+        try:
+            category = self.get_category(category_id)
+
+            title = data.get('title')
+            if title:
+                if not title or len(title.strip()) == 0:
+                    raise ValidationError('Название категории не может быть пустым')
+                if len(title) > 100:
+                    raise ValidationError('Название категории не может превышать 100 символов')
+                category.title = title.strip()
+
+            with transaction.atomic():
+                category.save()
+                return category
+        except ValidationError as e:
+            raise e
+        except Exception as e:
+            raise Exception(f'Ошибка при обновлении категории: {e}')
+
+    def delete_category(self, category_id: int) -> None:
+        """
+        Удаляет категорию.
+
+        :param category_id: Идентификатор категории для удаления.
+        """
+
+        try:
+            category = self.get_category(category_id)
+
+            if category.questions.exists():
+                raise Exception('Нельзя удалить категорию, к которой привязаны вопросы')
+
+            with transaction.atomic():
+                category.delete()
+        except Exception as e:
+            raise Exception(f'Ошибка при удалении категории: {e}')
