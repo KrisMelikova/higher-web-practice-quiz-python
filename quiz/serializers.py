@@ -3,6 +3,8 @@
 from typing import Dict, Any, List, Optional
 from rest_framework import serializers
 
+from quiz.constants import CATEGORY_TITLE_LENGTH, QUIZ_TITLE_LENGTH, DESCRIPTION_LENGTH, TEXT_LENGTH, OPTIONS_COUNT, \
+    EXPLANATION_LENGTH
 from quiz.models import Category, Quiz, Question
 
 
@@ -16,11 +18,13 @@ class CategorySerializer(serializers.ModelSerializer):
 
     def validate_title(self, value: str) -> str:
         """Валидация названия категории"""
+
         value = value.strip()
         if not value:
             raise serializers.ValidationError('Название категории не может быть пустым')
-        if len(value) > 100:
-            raise serializers.ValidationError('Название категории не может превышать 100 символов')
+        if len(value) > CATEGORY_TITLE_LENGTH:
+            raise serializers.ValidationError(f'Название категории не может превышать'
+                                              f' {CATEGORY_TITLE_LENGTH} символов')
         return value
 
 
@@ -38,15 +42,17 @@ class QuizSerializer(serializers.ModelSerializer):
         value = value.strip()
         if not value:
             raise serializers.ValidationError('Название квиза не может быть пустым')
-        if len(value) > 200:
-            raise serializers.ValidationError('Название квиза не может превышать 200 символов')
+        if len(value) > QUIZ_TITLE_LENGTH:
+            raise serializers.ValidationError(f'Название квиза не может превышать '
+                                              f'{QUIZ_TITLE_LENGTH} символов')
         return value
 
     def validate_description(self, value: Optional[str]) -> Optional[str]:
         """Валидация описания квиза"""
 
-        if value and len(value) > 500:
-            raise serializers.ValidationError('Описание квиза не может превышать 500 символов')
+        if value and len(value) > DESCRIPTION_LENGTH:
+            raise serializers.ValidationError(f'Описание квиза не может превышать '
+                                              f'{DESCRIPTION_LENGTH} символов')
         return value
 
 
@@ -73,15 +79,17 @@ class QuestionSerializer(serializers.ModelSerializer):
         value = value.strip()
         if not value:
             raise serializers.ValidationError('Текст вопроса не может быть пустым')
-        if len(value) > 500:
-            raise serializers.ValidationError('Текст вопроса не может превышать 500 символов')
+        if len(value) > TEXT_LENGTH:
+            raise serializers.ValidationError(f'Текст вопроса не может превышать '
+                                              f'{TEXT_LENGTH} символов')
         return value
 
     def validate_description(self, value: Optional[str]) -> Optional[str]:
         """Валидация описания вопроса"""
 
-        if value and len(value) > 500:
-            raise serializers.ValidationError('Описание вопроса не может превышать 500 символов')
+        if value and len(value) > DESCRIPTION_LENGTH:
+            raise serializers.ValidationError(f'Описание вопроса не может превышать '
+                                              f'{DESCRIPTION_LENGTH} символов')
         return value
 
     def validate_options(self, value: List[str]) -> List[str]:
@@ -89,8 +97,9 @@ class QuestionSerializer(serializers.ModelSerializer):
 
         if not isinstance(value, list):
             raise serializers.ValidationError('Options должен быть массивом')
-        if len(value) < 2:
-            raise serializers.ValidationError('Должно быть не менее 2 вариантов ответа')
+        if len(value) < OPTIONS_COUNT:
+            raise serializers.ValidationError(f'Должно быть не менее '
+                                              f'{OPTIONS_COUNT} вариантов ответа')
         return value
 
     def validate_correct_answer(self, value: str) -> str:
@@ -103,8 +112,9 @@ class QuestionSerializer(serializers.ModelSerializer):
     def validate_explanation(self, value: Optional[str]) -> Optional[str]:
         """Валидация объяснения"""
 
-        if value and len(value) > 250:
-            raise serializers.ValidationError('Объяснение не может превышать 250 символов')
+        if value and len(value) > EXPLANATION_LENGTH:
+            raise serializers.ValidationError(f'Объяснение не может превышать '
+                                              f'{EXPLANATION_LENGTH} символов')
         return value
 
     def validate(self, data: Dict[str, Any]) -> Dict[str, Any]:

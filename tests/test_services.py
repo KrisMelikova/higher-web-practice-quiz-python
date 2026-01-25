@@ -1,12 +1,16 @@
 import pytest
 
+from quiz.constants import (
+    CATEGORY_TITLE_LENGTH, DESCRIPTION_LENGTH,
+    TEXT_LENGTH, QUIZ_TITLE_LENGTH,
+)
 from quiz.models import Category, Quiz, Question
 from quiz.services.category import CategoryService
 from quiz.services.question import QuestionService
 from quiz.services.quiz_s import QuizService
 
+pytestmark = pytest.mark.django_db
 
-@pytest.mark.django_db
 class TestCategoryService:
     """Тесты для сервиса категорий"""
 
@@ -32,7 +36,7 @@ class TestCategoryService:
         long_title = 'A' * 101
         with pytest.raises(Exception) as exc_info:
             self.service.create_category(long_title)
-        assert 'Название категории не может превышать 100 символов' in str(exc_info.value)
+        assert f'Название категории не может превышать {CATEGORY_TITLE_LENGTH} символов' in str(exc_info.value)
 
     def test_get_nonexistent_category(self) -> None:
         """Тест получения несуществующей категории"""
@@ -94,7 +98,6 @@ class TestCategoryService:
         assert 'Категория с id=999 не найдена' in str(exc_info.value)
 
 
-@pytest.mark.django_db
 class TestQuizService:
     """Тесты для сервиса квизов"""
 
@@ -124,7 +127,7 @@ class TestQuizService:
         data = {'title': 'A' * 201}
         with pytest.raises(Exception) as exc_info:
             self.service.create_quiz(data)
-        assert 'Название квиза не может превышать 200 символов' in str(exc_info.value)
+        assert f'Название квиза не может превышать {QUIZ_TITLE_LENGTH} символов' in str(exc_info.value)
 
     def test_create_quiz_long_description(self) -> None:
         """Тест создания квиза с слишком длинным описанием"""
@@ -134,7 +137,7 @@ class TestQuizService:
         }
         with pytest.raises(Exception) as exc_info:
             self.service.create_quiz(data)
-        assert 'Описание квиза не может превышать 500 символов' in str(exc_info.value)
+        assert f'Описание квиза не может превышать {DESCRIPTION_LENGTH} символов' in str(exc_info.value)
 
     def test_get_quiz(self) -> None:
         """Тест получения квиза"""
@@ -225,7 +228,6 @@ class TestQuizService:
         assert Quiz.objects.count() == 1
 
 
-@pytest.mark.django_db
 class TestQuestionService:
     """Тесты для сервиса вопросов"""
 
@@ -313,7 +315,7 @@ class TestQuestionService:
         }
         with pytest.raises(Exception) as exc_info:
             self.service.create_question(self.quiz.id, data)
-        assert 'Текст вопроса не может превышать 500 символов' in str(exc_info.value)
+        assert f'Текст вопроса не может превышать {TEXT_LENGTH} символов' in str(exc_info.value)
 
     def test_create_question_one_option(self) -> None:
         """Тест создания вопроса с одним вариантом ответа"""
