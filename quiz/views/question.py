@@ -1,133 +1,43 @@
-"""Модуль с контроллерами для вопросов"""
-from typing import Optional
-
-from django.db.models import QuerySet
-from drf_yasg import openapi
-from drf_yasg.utils import swagger_auto_schema
-from rest_framework import status, viewsets
+"""View для работы с вопросами"""
 from rest_framework.request import Request
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework import status
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
-from quiz.models import Question
 from quiz.serializers import QuestionSerializer
 from quiz.services.question import QuestionService
 
 
-class QuestionViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet для работы с вопросами.
+class QuestionListCreateView(APIView):
+    """View для получения списка вопросов и создания нового"""
 
-    POST /api/question — создание вопроса.
-    GET /api/question — получение всех вопросов.
-    GET /api/question/<id:int> — получение вопроса по идентификатору.
-    PUT /api/question/<id:int> — изменение вопроса.
-    DELETE /api/question/<id:int> — удаление вопроса.
-    """
-
-    serializer_class = QuestionSerializer
-
-    def get_queryset(self) -> QuerySet[Question]:
-        """Возвращает queryset с фильтрацией"""
-
-        queryset = super().get_queryset()
-
-        quiz_id = self.request.query_params.get('quiz_id', None)
-        if quiz_id:
-            queryset = queryset.filter(quiz_id=quiz_id)
-
-        category_id = self.request.query_params.get('category_id', None)
-        if category_id:
-            queryset = queryset.filter(category_id=category_id)
-
-        difficulty = self.request.query_params.get('difficulty', None)
-        if difficulty:
-            queryset = queryset.filter(difficulty=difficulty)
-
-        search = self.request.query_params.get('search', None)
-        if search:
-            queryset = queryset.filter(
-                text__icontains=search
-            ) | queryset.filter(
-                description__icontains=search
-            )
-
-        return queryset.order_by('id')
-
-    def create(self, request: Request, *args, **kwargs) -> Response:
-        """Создание вопроса через сервис"""
-
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter('quiz_id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
+            openapi.Parameter('category_id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
+            openapi.Parameter('difficulty', openapi.IN_QUERY, type=openapi.TYPE_STRING),
+            openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING),
+        ],
+        responses={
+            200: QuestionSerializer(many=True),
+            400: 'Bad Request'
+        }
+    )
+    def get(self, request: Request) -> Response:
+        """Получение списка вопросов"""
         try:
-            quiz_id = request.data.get('quiz_id')
+            filters = {
+                'quiz_id': request.query_params.get('quiz_id'),
+                'category_id': request.query_params.get('category_id'),
+                'difficulty': request.query_params.get('difficulty'),
+                'search': request.query_params.get('search'),
+            }
 
-            if not quiz_id:
-                return Response(
-                    {'error': 'quiz_id обязателен для создания вопроса'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            question_service = QuestionService()
-            question = question_service.create_question(
-                int(quiz_id),
-                request.data
-            )
-
-            serializer = self.get_serializer(question)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    def retrieve(self, request: Request, *args, **kwargs) -> Response:
-        """Получение вопроса по ID через сервис"""
-
-        try:
-            question_service = QuestionService()
-            question = question_service.get_question(int(kwargs['pk']))
-
-            serializer = self.get_serializer(question)
+            questions = QuestionService.list_questions(filters)
+            serializer = QuestionSerializer(questions, many=True)
             return Response(serializer.data)
-
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-    def update(self, request: Request, *args, **kwargs) -> Response:
-        """Обновление вопроса через сервис"""
-
-        try:
-            question_service = QuestionService()
-            question = question_service.update_question(
-                int(kwargs['pk']),
-                request.data
-            )
-
-            serializer = self.get_serializer(question)
-            return Response(serializer.data)
-
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    def destroy(self, request: Request, *args, **kwargs) -> Response:
-        """Удаление вопроса через сервис"""
-
-        try:
-            question_service = QuestionService()
-            question_service.delete_question(int(kwargs['pk']))
-
-            return Response(
-                {'message': 'Вопрос успешно удален'},
-                status=status.HTTP_204_NO_CONTENT
-            )
-
         except Exception as e:
             return Response(
                 {'error': str(e)},
@@ -135,30 +45,129 @@ class QuestionViewSet(viewsets.ModelViewSet):
             )
 
     @swagger_auto_schema(
-        method='get',
-        manual_parameters=[
-            openapi.Parameter(
-                'text',
-                openapi.IN_QUERY,
-                description='Текст для поиска в вопросах',
-                type=openapi.TYPE_STRING,
-                required=True
+        request_body=QuestionSerializer,
+        responses={
+            201: QuestionSerializer,
+            400: 'Bad Request'
+        }
+    )
+    def post(self, request: Request) -> Response:
+        """Создание нового вопроса"""
+        try:
+            serializer = QuestionSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            question = QuestionService.create_question(serializer.validated_data)
+
+            response_serializer = QuestionSerializer(question)
+            return Response(
+                response_serializer.data,
+                status=status.HTTP_201_CREATED
             )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class QuestionDetailView(APIView):
+    """View для работы с конкретным вопросом"""
+
+    @swagger_auto_schema(
+        responses={
+            200: QuestionSerializer,
+            404: 'Not Found'
+        }
+    )
+    def get(self, request: Request, pk: int) -> Response:
+        """Получение вопроса по ID"""
+        try:
+            question = QuestionService.get_question(pk)
+            serializer = QuestionSerializer(question)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @swagger_auto_schema(
+        request_body=QuestionSerializer,
+        responses={
+            200: QuestionSerializer,
+            400: 'Bad Request'
+        }
+    )
+    def put(self, request: Request, pk: int) -> Response:
+        """Полное обновление вопроса"""
+        try:
+            serializer = QuestionSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            question = QuestionService.update_question(pk, serializer.validated_data)
+
+            response_serializer = QuestionSerializer(question)
+            return Response(response_serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @swagger_auto_schema(
+        request_body=QuestionSerializer,
+        responses={
+            200: QuestionSerializer,
+            400: 'Bad Request'
+        }
+    )
+    def patch(self, request:Request, pk:int) -> Response:
+        """Частичное обновление вопроса"""
+        try:
+            question = QuestionService.get_question(pk)
+            serializer = QuestionSerializer(question, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+
+            updated_question = QuestionService.update_question(pk, serializer.validated_data)
+
+            response_serializer = QuestionSerializer(updated_question)
+            return Response(response_serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def delete(self, request: Request, pk: int) -> Response:
+        """Удаление вопроса"""
+        try:
+            QuestionService.delete_question(pk)
+            return Response(
+                {'message': 'Вопрос успешно удален'},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class QuestionSearchView(APIView):
+    """View для поиска вопросов"""
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter('text', openapi.IN_QUERY, type=openapi.TYPE_STRING, required=True)
         ],
         responses={
             200: QuestionSerializer(many=True),
-            400: openapi.Response('Bad Request', openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING)
-                }
-            ))
+            400: 'Bad Request'
         }
     )
-    @action(detail=False, methods=['get'], url_path='search')
-    def search_questions(self, request: Request) -> Response:
-        """Поиск вопросов по тексту (GET /api/question/search?text=...)"""
-
+    def get(self, request: Request) -> Response:
+        """Поиск вопросов по тексту"""
         try:
             text = request.query_params.get('text', '').strip()
 
@@ -168,39 +177,40 @@ class QuestionViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            question_service = QuestionService()
-            questions = question_service.get_questions_by_text(text)
-
-            serializer = self.get_serializer(questions, many=True)
+            questions = QuestionService.search_by_text(text)
+            serializer = QuestionSerializer(questions, many=True)
             return Response(serializer.data)
-
         except Exception as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(detail=True, methods=['get'], url_path='random')
-    def random_question(self, pk: Optional[str] = None) -> Response:
-        """Получение случайного вопроса из квиза (GET /api/question/<quiz_id>/random)"""
 
-        try:
-            question_service = QuestionService()
-            question = question_service.random_question_from_quiz(int(pk))
+class QuestionCheckAnswerView(APIView):
+    """View для проверки ответа на вопрос"""
 
-            serializer = self.get_serializer(question)
-            return Response(serializer.data)
-
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-    @action(detail=True, methods=['post'], url_path='check-answer')
-    def check_answer(self, request: Request, pk: Optional[str] = None) -> Response:
-        """Проверка правильности ответа на вопрос (POST /api/question/<id>/check-answer)"""
-
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['answer'],
+            properties={
+                'answer': openapi.Schema(type=openapi.TYPE_STRING)
+            }
+        ),
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'is_correct': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                    'question_id': openapi.Schema(type=openapi.TYPE_INTEGER)
+                }
+            ),
+            400: 'Bad Request'
+        }
+    )
+    def post(self, request: Request, pk: int) -> Response:
+        """Проверка ответа на вопрос"""
         try:
             answer = request.data.get('answer', '').strip()
 
@@ -210,16 +220,38 @@ class QuestionViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            question_service = QuestionService()
-            is_correct = question_service.check_answer(int(pk), answer)
+            is_correct = QuestionService.check_answer(pk, answer)
 
             return Response({
                 'is_correct': is_correct,
                 'question_id': pk
             })
-
         except Exception as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class QuestionRandomFromQuizView(APIView):
+    """View для получения случайного вопроса из квиза"""
+
+    @swagger_auto_schema(
+        responses={
+            200: QuestionSerializer,
+            404: 'Not Found'
+        }
+    )
+    def get(self, request: Request, quiz_id: int) -> Response:
+        """Получение случайного вопроса из квиза"""
+
+        try:
+            question_service = QuestionService()
+            question = question_service.random_question_from_quiz(quiz_id)
+            serializer = QuestionSerializer(question)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_404_NOT_FOUND
             )

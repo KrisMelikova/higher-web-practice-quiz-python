@@ -1,5 +1,3 @@
-"""Модуль с реализацией сервиса категорий"""
-
 from django.db import transaction, DatabaseError
 from django.core.exceptions import ValidationError
 from django.http import Http404
@@ -13,13 +11,22 @@ from quiz.models import Category
 class CategoryService(AbstractCategoryService):
     """Реализация сервиса для работы с категориями"""
 
-    def list_categories(self) -> list[Category]:
+    def list_categories(self, filters: dict = None) -> list[Category]:
         """Метод для получения списка категорий"""
 
         try:
-            return list(Category.objects.all().order_by('id'))
+            queryset = Category.objects.all().order_by('id')
+
+            if filters:
+                title = filters.get('title')
+                if title:
+                    queryset = queryset.filter(title__icontains=title)
+
+            return list(queryset)
         except DatabaseError as e:
             raise Exception(f'Ошибка при получении списка категорий: {e}')
+        except Exception as e:
+            raise Exception(f'Непредвиденная ошибка: {e}')
 
     def get_category(self, category_id: int) -> Category:
         """
@@ -28,6 +35,7 @@ class CategoryService(AbstractCategoryService):
         :param category_id: Идентификатор категории.
         :return: Категория из БД.
         """
+
         try:
             return get_object_or_404(Category, id=category_id)
         except Http404:
@@ -46,21 +54,34 @@ class CategoryService(AbstractCategoryService):
         if not title or len(title.strip()) == 0:
             raise ValidationError('Название категории не может быть пустым')
 
-        if len(title) > 100:
-            raise ValidationError('Название категории не может превышать 100 символов')
+        if len(title) > CATEGORY_TITLE_LENGTH:
+            raise ValidationError(f'Название категории не может превышать '
+                                  f'{CATEGORY_TITLE_LENGTH} символов')
 
         try:
             with transaction.atomic():
-                return Category.objects.get_or_create(title=title.strip())
+                category, created = Category.objects.get_or_create(
+                    title=title.strip(),
+                    defaults={'title': title.strip()}
+                )
+                if not created:
+                    raise ValidationError(f'Категория с названием "{title}" уже существует')
+                return category
         except DatabaseError as e:
             raise Exception(f'Ошибка при создании категории: {e}')
+        except Exception as e:
+            raise Exception(f'Ошибка при создании категории: {e}')
 
-    def update_category(self, category_id: int, data: dict) -> Category:
+    def update_category(
+            self, category_id: int, data: dict,
+            partial: bool = False,
+    ) -> Category:
         """
         Обновляет категорию новыми данными.
 
         :param category_id: Идентификатор категории.
         :param data: Данные для обновления категории.
+        :param partial: Частичное обновление (для PATCH).
         :return: Обновленная категория.
         """
 
@@ -68,13 +89,14 @@ class CategoryService(AbstractCategoryService):
             category = self.get_category(category_id)
 
             title = data.get('title')
-            if title:
-                if not title or len(title.strip()) == 0:
-                    raise ValidationError('Название категории не может быть пустым')
-                if len(title) > CATEGORY_TITLE_LENGTH:
-                    raise ValidationError(f'Название категории не может превышать '
-                                          f'{CATEGORY_TITLE_LENGTH} символов')
-                category.title = title.strip()
+            if title is not None or not partial:
+                if title is not None:
+                    if not title or len(title.strip()) == 0:
+                        raise ValidationError('Название категории не может быть пустым')
+                    if len(title) > CATEGORY_TITLE_LENGTH:
+                        raise ValidationError(f'Название категории не может превышать '
+                                              f'{CATEGORY_TITLE_LENGTH} символов')
+                    category.title = title.strip()
 
             with transaction.atomic():
                 category.save()
@@ -93,7 +115,6 @@ class CategoryService(AbstractCategoryService):
 
         try:
             category = self.get_category(category_id)
-
             if category.questions.exists():
                 raise Exception('Нельзя удалить категорию, к которой привязаны вопросы')
 

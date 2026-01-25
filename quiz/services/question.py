@@ -1,4 +1,5 @@
 """Модуль с реализацией сервиса вопросов"""
+
 import random
 
 from django.db import transaction, DatabaseError
@@ -191,7 +192,8 @@ class QuestionService(AbstractQuestionService):
             if correct_answer:
                 current_options = options if options else question.options
                 if correct_answer not in current_options:
-                    raise ValidationError('Правильный ответ должен быть одним из вариантов ответа')
+                    raise ValidationError('Правильный ответ должен быть одним '
+                                          'из вариантов ответа')
                 question.correct_answer = correct_answer
 
             difficulty = data.get('difficulty')
@@ -258,7 +260,6 @@ class QuestionService(AbstractQuestionService):
 
         try:
             Quiz.objects.get(id=quiz_id)
-
             questions = Question.objects.filter(quiz_id=quiz_id)
 
             if not questions.exists():

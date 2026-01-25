@@ -67,10 +67,12 @@ class QuizService(AbstractQuizService):
             raise ValidationError('Название квиза не может быть пустым')
 
         if len(title) > QUIZ_TITLE_LENGTH:
-            raise ValidationError(f'Название квиза не может превышать {QUIZ_TITLE_LENGTH} символов')
+            raise ValidationError(f'Название квиза не может превышать '
+                                  f'{QUIZ_TITLE_LENGTH} символов')
 
         if description and len(description) > DESCRIPTION_LENGTH:
-            raise ValidationError(f'Описание квиза не может превышать {DESCRIPTION_LENGTH} символов')
+            raise ValidationError(f'Описание квиза не может превышать '
+                                  f'{DESCRIPTION_LENGTH} символов')
 
         try:
             with transaction.atomic():
@@ -100,12 +102,14 @@ class QuizService(AbstractQuizService):
                 if not title or len(title.strip()) == 0:
                     raise ValidationError('Название квиза не может быть пустым')
                 if len(title) > QUIZ_TITLE_LENGTH:
-                    raise ValidationError(f'Название квиза не может превышать {QUIZ_TITLE_LENGTH} символов')
+                    raise ValidationError(f'Название квиза не может превышать '
+                                          f'{QUIZ_TITLE_LENGTH} символов')
                 quiz.title = title.strip()
 
             if description is not None:
                 if description and len(description) > DESCRIPTION_LENGTH:
-                    raise ValidationError(f'Описание квиза не может превышать {DESCRIPTION_LENGTH} символов')
+                    raise ValidationError(f'Описание квиза не может превышать '
+                                          f'{DESCRIPTION_LENGTH} символов')
                 quiz.description = description.strip() if description else None
 
             with transaction.atomic():
