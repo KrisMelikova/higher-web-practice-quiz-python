@@ -3,6 +3,7 @@
 from django.db import transaction, DatabaseError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
+from quiz.constants import DESCRIPTION_LENGTH, QUIZ_TITLE_LENGTH
 from quiz.dao import AbstractQuizService
 from quiz.models import Quiz
 
@@ -65,11 +66,11 @@ class QuizService(AbstractQuizService):
         if not title or len(title.strip()) == 0:
             raise ValidationError('Название квиза не может быть пустым')
 
-        if len(title) > 200:
-            raise ValidationError('Название квиза не может превышать 200 символов')
+        if len(title) > QUIZ_TITLE_LENGTH:
+            raise ValidationError(f'Название квиза не может превышать {QUIZ_TITLE_LENGTH} символов')
 
-        if description and len(description) > 500:
-            raise ValidationError('Описание квиза не может превышать 500 символов')
+        if description and len(description) > DESCRIPTION_LENGTH:
+            raise ValidationError(f'Описание квиза не может превышать {DESCRIPTION_LENGTH} символов')
 
         try:
             with transaction.atomic():
@@ -98,13 +99,13 @@ class QuizService(AbstractQuizService):
             if title:
                 if not title or len(title.strip()) == 0:
                     raise ValidationError('Название квиза не может быть пустым')
-                if len(title) > 200:
-                    raise ValidationError('Название квиза не может превышать 200 символов')
+                if len(title) > QUIZ_TITLE_LENGTH:
+                    raise ValidationError(f'Название квиза не может превышать {QUIZ_TITLE_LENGTH} символов')
                 quiz.title = title.strip()
 
             if description is not None:
-                if description and len(description) > 500:
-                    raise ValidationError('Описание квиза не может превышать 500 символов')
+                if description and len(description) > DESCRIPTION_LENGTH:
+                    raise ValidationError(f'Описание квиза не может превышать {DESCRIPTION_LENGTH} символов')
                 quiz.description = description.strip() if description else None
 
             with transaction.atomic():

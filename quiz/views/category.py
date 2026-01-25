@@ -20,7 +20,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
     DELETE /api/category/<id:int> — удаление категории.
     """
 
-    queryset = Category.objects.all().order_by('id')
     serializer_class = CategorySerializer
 
     def get_queryset(self) -> QuerySet[Category]:

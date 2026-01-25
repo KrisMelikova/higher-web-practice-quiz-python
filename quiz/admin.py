@@ -1,6 +1,7 @@
 from typing import List
 from django.contrib import admin
 
+from .constants import BASE_CHARACTER_LIMIT
 from .models import Category, Quiz, Question
 
 
@@ -15,10 +16,9 @@ class QuizAdmin(admin.ModelAdmin):
     list_display: List[str] = ('id', 'title', 'description_short')
     search_fields: List[str] = ('title', 'description')
 
+    @admin.display(description='Описание')
     def description_short(self, obj: Quiz) -> str:
-        return obj.description[:50] + '...' if obj.description else ''
-
-    description_short.short_description = 'Описание'
+        return obj.description[:BASE_CHARACTER_LIMIT] if obj.description else ''
 
 
 @admin.register(Question)
@@ -27,7 +27,6 @@ class QuestionAdmin(admin.ModelAdmin):
     list_filter: List[str] = ('difficulty', 'category', 'quiz')
     search_fields: List[str] = ('text', 'description')
 
+    @admin.display(description='Текст вопроса')
     def text_short(self, obj: Question) -> str:
-        return obj.text[:50] + '...'
-
-    text_short.short_description = 'Текст вопроса'
+        return obj.text[:BASE_CHARACTER_LIMIT]

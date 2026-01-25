@@ -5,6 +5,7 @@ from django.db import transaction, DatabaseError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Q
 
+from quiz.constants import DESCRIPTION_LENGTH, EXPLANATION_LENGTH, OPTIONS_COUNT, TEXT_LENGTH
 from quiz.dao import AbstractQuestionService
 from quiz.models import Category, Difficulty, Quiz, Question
 
@@ -103,25 +104,30 @@ class QuestionService(AbstractQuestionService):
 
             if not text or len(text.strip()) == 0:
                 raise ValidationError('Текст вопроса не может быть пустым')
-            if len(text) > 500:
-                raise ValidationError('Текст вопроса не может превышать 500 символов')
+            if len(text) > DESCRIPTION_LENGTH:
+                raise ValidationError(f'Текст вопроса не может '
+                                      f'превышать {DESCRIPTION_LENGTH} символов')
 
             description = data.get('description')
-            if description and len(description) > 500:
-                raise ValidationError('Описание вопроса не может превышать 500 символов')
+            if description and len(description) > DESCRIPTION_LENGTH:
+                raise ValidationError(f'Описание вопроса не может '
+                                      f'превышать {DESCRIPTION_LENGTH} символов')
 
             if not correct_answer:
                 raise ValidationError('Правильный ответ обязателен')
 
             if correct_answer not in options:
-                raise ValidationError('Правильный ответ должен быть одним из вариантов ответа')
+                raise ValidationError('Правильный ответ должен быть одним из '
+                                      'вариантов ответа')
 
             if difficulty not in [d[0] for d in Difficulty.choices]:
-                raise ValidationError(f'Сложность должна быть одной из: {[d[0] for d in Difficulty.choices]}')
+                raise ValidationError(f'Сложность должна быть одной '
+                                      f'из: {[d[0] for d in Difficulty.choices]}')
 
             explanation = data.get('explanation')
-            if explanation and len(explanation) > 250:
-                raise ValidationError('Объяснение ответа не может превышать 250 символов')
+            if explanation and len(explanation) > EXPLANATION_LENGTH:
+                raise ValidationError(f'Объяснение ответа не может превышать '
+                                      f'{EXPLANATION_LENGTH} символов')
 
             with transaction.atomic():
                 return Question.objects.create(
@@ -162,20 +168,23 @@ class QuestionService(AbstractQuestionService):
             if text:
                 if not text or len(text.strip()) == 0:
                     raise ValidationError('Текст вопроса не может быть пустым')
-                if len(text) > 500:
-                    raise ValidationError('Текст вопроса не может превышать 500 символов')
+                if len(text) > TEXT_LENGTH:
+                    raise ValidationError(f'Текст вопроса не может '
+                                          f'превышать {TEXT_LENGTH} символов')
                 question.text = text.strip()
 
             description = data.get('description')
             if description is not None:
-                if description and len(description) > 500:
-                    raise ValidationError('Описание вопроса не может превышать 500 символов')
+                if description and len(description) > DESCRIPTION_LENGTH:
+                    raise ValidationError(f'Описание вопроса не может превышать '
+                                          f'{DESCRIPTION_LENGTH} символов')
                 question.description = description.strip() if description else None
 
             options = data.get('options')
             if options:
-                if not isinstance(options, list) or len(options) < 2:
-                    raise ValidationError('Должно быть не менее 2 вариантов ответа в виде списка')
+                if not isinstance(options, list) or len(options) < OPTIONS_COUNT:
+                    raise ValidationError(f'Должно быть не менее {OPTIONS_COUNT} вариантов '
+                                          f'ответа в виде списка')
                 question.options = options
 
             correct_answer = data.get('correct_answer')
@@ -194,8 +203,9 @@ class QuestionService(AbstractQuestionService):
 
             explanation = data.get('explanation')
             if explanation is not None:
-                if explanation and len(explanation) > 250:
-                    raise ValidationError('Объяснение ответа не может превышать 250 символов')
+                if explanation and len(explanation) > EXPLANATION_LENGTH:
+                    raise ValidationError(f'Объяснение ответа не может '
+                                          f'превышать {EXPLANATION_LENGTH} символов')
                 question.explanation = explanation.strip() if explanation else None
 
             with transaction.atomic():
