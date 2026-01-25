@@ -1,8 +1,11 @@
 """Модуль с реализацией сервиса категорий"""
 
 from django.db import transaction, DatabaseError
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
+from django.http import Http404
+from django.shortcuts import get_object_or_404
 
+from quiz.constants import CATEGORY_TITLE_LENGTH
 from quiz.dao import AbstractCategoryService
 from quiz.models import Category
 
@@ -25,12 +28,11 @@ class CategoryService(AbstractCategoryService):
         :param category_id: Идентификатор категории.
         :return: Категория из БД.
         """
-
         try:
-            return Category.objects.get(id=category_id)
-        except ObjectDoesNotExist:
+            return get_object_or_404(Category, id=category_id)
+        except Http404:
             raise Exception(f'Категория с id={category_id} не найдена')
-        except DatabaseError as e:
+        except Exception as e:
             raise Exception(f'Ошибка при получении категории: {e}')
 
     def create_category(self, title: str) -> Category:
@@ -49,7 +51,7 @@ class CategoryService(AbstractCategoryService):
 
         try:
             with transaction.atomic():
-                return Category.objects.create(title=title.strip())
+                return Category.objects.get_or_create(title=title.strip())
         except DatabaseError as e:
             raise Exception(f'Ошибка при создании категории: {e}')
 
@@ -69,8 +71,9 @@ class CategoryService(AbstractCategoryService):
             if title:
                 if not title or len(title.strip()) == 0:
                     raise ValidationError('Название категории не может быть пустым')
-                if len(title) > 100:
-                    raise ValidationError('Название категории не может превышать 100 символов')
+                if len(title) > CATEGORY_TITLE_LENGTH:
+                    raise ValidationError(f'Название категории не может превышать '
+                                          f'{CATEGORY_TITLE_LENGTH} символов')
                 category.title = title.strip()
 
             with transaction.atomic():

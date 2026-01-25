@@ -24,7 +24,6 @@ class QuizViewSet(viewsets.ModelViewSet):
     DELETE /api/quiz/<id:int> — удаление квиза.
     """
 
-    queryset = Quiz.objects.all().order_by('id')
     serializer_class = QuizSerializer
 
     def get_queryset(self) -> QuerySet[Quiz]:
